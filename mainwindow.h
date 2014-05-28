@@ -8,6 +8,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "facedetect.h"
+#include "facetrack.h"
 
 namespace Ui {
 class MainWindow;
@@ -47,8 +48,10 @@ private:
     QImage qimg;
 
     //人脸检测
-    FaceDetect *face;
+    FaceDetect *faceDet;
 
+    //用于人脸跟踪
+    FaceTrack *faceTrk;
     //用于camshift的初始搜索框
     cv::Rect windowInit;
 };

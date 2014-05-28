@@ -8,11 +8,11 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     //初始化
     timer = new QTimer(this);
-    face  = new FaceDetect;
+    faceDet  = new FaceDetect;
 
     //信号与槽实现连接
     connect(timer,SIGNAL(timeout()),this,SLOT(mainLoop()));
-    connect(this,SIGNAL(getFace(cv::Mat&)),face,SLOT(run(cv::Mat&)));
+    connect(this,SIGNAL(getFace(cv::Mat&)),faceDet,SLOT(run(cv::Mat&)));
 }
 
 MainWindow::~MainWindow()
@@ -41,9 +41,9 @@ void MainWindow::mainLoop()
     if(this->windowInit.width <= 0 || this->windowInit.height <= 0)
     {
         emit this->getFace(frame);
-        if(face->isDetected())
+        if(faceDet->isDetected())
         {
-            this->windowInit = face->getWindow();
+            this->windowInit = faceDet->getWindow();
         }
     }
     //显示帧
