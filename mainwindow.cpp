@@ -7,10 +7,12 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     //初始化
-    timer =new QTimer(this);
+    timer = new QTimer(this);
+    face  = new FaceDetect;
 
     //信号与槽实现连接
     connect(timer,SIGNAL(timeout()),this,SLOT(mainLoop()));
+    connect(this,SIGNAL(getFace(cv::Mat&)),face,SLOT(run(cv::Mat&)));
 }
 
 MainWindow::~MainWindow()
@@ -35,6 +37,15 @@ void MainWindow::mainLoop()
     cam.read(this->frame);
     cv::cvtColor(frame,frame,CV_BGR2RGB);
 
+    //我们使用人脸跟踪获得初始的camshift窗口
+    if(this->windowInit.width <= 0 || this->windowInit.height <= 0)
+    {
+        emit this->getFace(frame);
+        if(face->isDetected())
+        {
+            this->windowInit = face->getWindow();
+        }
+    }
     //显示帧
     displayFrame(frame);
 }
@@ -48,4 +59,14 @@ void MainWindow::displayFrame(cv::Mat &frame)
                          frame.cols, frame.rows, frame.step, QImage::Format_RGB888);
     ui->labelCam->setPixmap(QPixmap::fromImage(qimg));
     ui->labelCam->repaint();
+}
+
+void MainWindow::on_actionQuit_triggered()
+{
+    qApp->exit();
+}
+
+void MainWindow::on_actionCloseCam_triggered()
+{
+    cam.release();
 }

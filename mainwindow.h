@@ -7,6 +7,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "facedetect.h"
 
 namespace Ui {
 class MainWindow;
@@ -23,10 +24,17 @@ public:
     //显示帧
     void displayFrame(cv::Mat &frame);
 
+signals:
+    void getFace(cv::Mat &frame);
+
 private slots:
     //主要的功能调用槽
     void mainLoop();
     void on_actionOpenCam_triggered();
+
+    void on_actionQuit_triggered();
+
+    void on_actionCloseCam_triggered();
 
 private:
     Ui::MainWindow *ui;
@@ -37,6 +45,12 @@ private:
     cv::Mat frame;
     //用于显示帧
     QImage qimg;
+
+    //人脸检测
+    FaceDetect *face;
+
+    //用于camshift的初始搜索框
+    cv::Rect windowInit;
 };
 
 #endif // MAINWINDOW_H
