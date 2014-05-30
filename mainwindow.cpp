@@ -8,11 +8,15 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     //初始化
     timer = new QTimer(this);
+    //人脸检测
     faceDet  = new FaceDetect;
+    //人脸跟踪
+    faceTrk = new FaceTrack;
 
     //信号与槽实现连接
     connect(timer,SIGNAL(timeout()),this,SLOT(mainLoop()));
     connect(this,SIGNAL(getFace(cv::Mat&)),faceDet,SLOT(run(cv::Mat&)));
+    connect(this,SIGNAL(trackFace(cv::Mat&,cv::Rect&)),faceTrk,SLOT(run(cv::Mat&,cv::Rect&)));
 }
 
 MainWindow::~MainWindow()
@@ -23,7 +27,7 @@ MainWindow::~MainWindow()
 void MainWindow::on_actionOpenCam_triggered()
 {
     //打开摄像头
-    cam.open(0);
+    cam.open(1);
     if(!cam.isOpened())
         QMessageBox::warning(this,tr("Error Information!"),tr("Can't open webcam!"));
 
@@ -36,6 +40,8 @@ void MainWindow::mainLoop()
     //读入帧
     cam.read(this->frame);
     cv::cvtColor(frame,frame,CV_BGR2RGB);
+    //先将视频依据 y 轴翻转
+    cv::flip(frame,frame,1);
 
     //我们使用人脸跟踪获得初始的camshift窗口
     if(this->windowInit.width <= 0 || this->windowInit.height <= 0)
@@ -45,6 +51,9 @@ void MainWindow::mainLoop()
         {
             this->windowInit = faceDet->getWindow();
         }
+    }else
+    {
+        emit this->trackFace(frame,this->windowInit);
     }
     //显示帧
     displayFrame(frame);
@@ -68,5 +77,6 @@ void MainWindow::on_actionQuit_triggered()
 
 void MainWindow::on_actionCloseCam_triggered()
 {
+
     cam.release();
 }

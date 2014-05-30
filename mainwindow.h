@@ -26,7 +26,10 @@ public:
     void displayFrame(cv::Mat &frame);
 
 signals:
+    //检测人脸
     void getFace(cv::Mat &frame);
+    //跟踪人脸
+    void trackFace(cv::Mat &frame,cv::Rect &rect);
 
 private slots:
     //主要的功能调用槽
