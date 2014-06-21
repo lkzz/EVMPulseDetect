@@ -7,13 +7,6 @@ FaceDetect::FaceDetect(QObject *parent) :
     cascadeName = "/home/kevin/program/EVMPulseDetect/EVMPulseDetect/haarcascades/haarcascade_frontalface_alt2.xml";
 }
 
-////帧拷贝函数
-//void FaceDetect::frameIn(cv::Mat &currentFrame)
-//{
-//    currentFrame.copyTo(this->frame);
-//}
-
-
 //感兴趣区域检测
 void FaceDetect::detectFace(cv::Mat &frame)
 {

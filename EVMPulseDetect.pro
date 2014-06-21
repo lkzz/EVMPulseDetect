@@ -8,18 +8,23 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = untitled
+TARGET = EVMPulseDet
 TEMPLATE = app
-
 
 SOURCES += main.cpp\
         mainwindow.cpp \
     facedetect.cpp \
-    facetrack.cpp
+    facetrack.cpp \
+    SpatialFilter.cpp \
+    colormagnify.cpp \
+    featuresdetect.cpp
 
 HEADERS  += mainwindow.h \
     facedetect.h \
-    facetrack.h
+    facetrack.h \
+    SpatialFilter.h \
+    colormagnify.h \
+    featuresdetect.h
 
 FORMS    += mainwindow.ui
 

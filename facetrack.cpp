@@ -9,21 +9,22 @@ FaceTrack::FaceTrack(QObject *parent) :
     vmax(255),
     histSize(30),
     showHist(false),
-    globalwidth(250),
-    globalheight(300)
+    globalwidth(256),
+    globalheight(256)
 {
     //卡尔曼滤波器初始化
+  statePost = (cv::Mat_<float>(stateNum,1) <<0,0,0,0);
     this->klFilter = new cv::KalmanFilter(stateNum,measureNum,0);
     this->klFilter->transitionMatrix= *(cv::Mat_<float>(4, 4) << 1,0,1,0,   0,1,0,1,  0,0,1,0,  0,0,0,1);
     cv::setIdentity(klFilter->measurementMatrix);
-    cv::setIdentity(klFilter->processNoiseCov,cv::Scalar::all(1e-5));
-    cv::setIdentity(klFilter->measurementNoiseCov,cv::Scalar::all(1e-1));
+    cv::setIdentity(klFilter->processNoiseCov,cv::Scalar::all(1e-1));
+    cv::setIdentity(klFilter->measurementNoiseCov,cv::Scalar::all(1e-3));
     //预测估计协方差矩阵;
-    cv::setIdentity(klFilter->errorCovPost,cv::Scalar::all(1.0));
-
-    this->measurement = cv::Mat_<float>(2,1);
-    this->measurement.setTo(cv::Scalar::all(0));
-
+    cv::setIdentity(klFilter->errorCovPost,cv::Scalar::all(0.1));
+  measurement = cv::Mat::zeros(measureNum,1,CV_32F);
+//    this->measurement = cv::Mat_<float>(2,1);
+//    this->measurement.setTo(cv::Scalar::all(0));
+    
 }
 
 //camshift处理过程实现
@@ -87,23 +88,29 @@ cv::RotatedRect FaceTrack::camshiftProcess(cv::Mat &frame,cv::Rect &ROI)
     backProject &= mask;
 
     //调用camshift模块
-    cv::RotatedRect trackBox = cv::CamShift(backProject,ROI,
-                                   cv::TermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER,100,1));
+    trackBox = cv::CamShift(backProject,ROI,
+                                   cv::TermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER,10,1));
+    camCenter = cv::Point2f(trackBox.center.x,trackBox.center.y);
 
- //   this->plotRect(frame,result);
     return trackBox;
 }
 
 //依据给出区域的中心坐标，进行卡尔曼滤波，只预测中心
-void FaceTrack::kalmanProcess(cv::RotatedRect &rotRect)
+void FaceTrack::kalmanProcess()
 {
-    this->measurement.at<float>(0) = rotRect.center.x;
-    this->measurement.at<float>(1) = rotRect.center.y;
-    cv::Mat estimated;
-    //进行 kalman 预测，可以得到预测坐标
-    estimated = klFilter->correct(this->measurement);
-    cv::Point2f statePt(estimated.at<float>(0),estimated.at<float>(1));
-    estimatedCenter = statePt;
+  //do kalman prediction
+  klFilter->predict();
+  KFPredictCenter = cv::Point2f(klFilter->statePost.at<float>(0),
+                                klFilter->statePost.at<float>(1));
+
+    this->measurement.at<float>(0) = camCenter.x;
+    this->measurement.at<float>(1) = camCenter.y;
+
+
+  //进行 kalman 预测，可以得到预测坐标
+  klFilter->correct(this->measurement);
+  KFCorrectCenter = cv::Point2f(klFilter->statePost.at<float>(0),
+                                klFilter->statePost.at<float>(1));
 }
 
 //画出跟踪到的区域
@@ -116,6 +123,9 @@ void FaceTrack::plotRect(cv::Mat &frame, cv::RotatedRect &trackBox)
         cv::line(frame,vertices[i],vertices[(i+1)%4],cv::Scalar(0,255,0),2);
     }
 
+    cv::circle(frame,camCenter,2,cv::Scalar(255,0,0),2,CV_AA);
+    cv::circle(frame, KFPredictCenter, 2, cv::Scalar(0,255,0), 4, CV_AA); // draw kalman predict result
+    cv::circle(frame, KFCorrectCenter, 2, cv::Scalar(0,0,255), 2, CV_AA); // draw kalman correct result
     cv::Rect brect = trackBox.boundingRect();
     cv::rectangle(frame,brect,cv::Scalar(255,0,0),2);
 }
@@ -123,6 +133,7 @@ void FaceTrack::plotRect(cv::Mat &frame, cv::RotatedRect &trackBox)
 cv::Mat FaceTrack::rotatedProcess(cv::Mat &frame, cv::RotatedRect &rotRect)
 {
     float angle = rotRect.angle;
+    angle = int(angle)%360;
     if( angle>135.0 )
         angle = 180 - angle;
 
@@ -132,29 +143,11 @@ cv::Mat FaceTrack::rotatedProcess(cv::Mat &frame, cv::RotatedRect &rotRect)
     cv::warpAffine(frame,rotAfter,warp,frame.size());
     cv::getRectSubPix(rotAfter,rotRect.size,rotRect.center,rotAfter);
     cv::cvtColor(rotAfter,rotAfter,CV_BGR2RGB);
-    std::cout<<rotAfter.cols<<","<<rotAfter.rows<<std::endl;
-    cv::namedWindow("Rotated Window");
-    cv::imshow("Rotated Window",rotAfter);
+//    std::cout<<rotAfter.cols<<","<<rotAfter.rows<<std::endl;
+//    cv::imshow("Rotated Window",rotAfter);
 
-//    //use minAreaRect
-//    cv::Point2f vertices[4];
-//    rotRect.points(vertices);
-//    std::vector<cv::Point2f> vertVec;
-//    cv::RotatedRect calculateRect;
-//    for(int i=0;i<4;i++)
-//        vertVec.push_back(vertices[i]);
-//    calculateRect = cv::minAreaRect(vertVec);
-//    cv::Mat bg;
-//    frame.copyTo(bg);
-//    cv::cvtColor(bg,bg,CV_BGR2RGB);
-//    for(int i=0;i<4;i++)
-//    {
-//        cv::line(bg,vertVec[i],vertVec[(i+1)%4],cv::Scalar(0,0,255));
-//    }
-//    cv::namedWindow("minAreaRect");
-//    cv::imshow("minAreaRect",bg);
 
-    cv::waitKey(10);
+//    cv::waitKey(10);
 //    if( c == 27 )
 //        break;
 
@@ -199,20 +192,24 @@ cv::Mat FaceTrack::uniformSize(cv::Mat &input)
     }
 
     return output;
+}
 
+cv::Mat FaceTrack::getTrackBox()
+{
+    return this->uniMat;
 }
 
 //通过信号和槽机制完成主要的函数调用
 void FaceTrack::run(cv::Mat &frameIn, cv::Rect &faceRect)
 {
     this->trackBox = this->camshiftProcess(frameIn,faceRect);
- //   this->kalmanProcess(rotRect);
+  this->kalmanProcess();
     cv::Mat rotMat = this->rotatedProcess(frameIn,trackBox);
-    cv::Mat uniMat = this->uniformSize(rotMat);
-    cv::namedWindow("Uniform Window");
-    cv::imshow("Uniform Window",uniMat);
+    uniMat = this->uniformSize(rotMat);
+//    cv::namedWindow("Uniform Window");
+//    cv::imshow("Uniform Window",uniMat);
 
-    cv::waitKey(10);
+//    cv::waitKey(10);
     //画出rotatedRect
     this->plotRect(frameIn,trackBox);
 }
